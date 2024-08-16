@@ -2,6 +2,7 @@ using MeetingGroups.Client.BlazorApp.Auth;
 using MeetingGroups.Client.BlazorApp.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using System.Security.Claims;
 
@@ -27,6 +28,19 @@ builder.Services.AddOptions<OpenIdConnectOptions>(MS_OIDC_SCHEME)
         oidcOptions.RequireHttpsMetadata = authServerSettings.RequireHttpsMetadata;
 
         oidcOptions.Scope.Add("MeetingsModuleWebApi_ClientScope");
+
+        oidcOptions.Events.OnTokenValidated += eventArgs =>
+        {
+            // See https://codyanhorn.tech/blog/blazor/2020/09/06/Blazor-Server-Get-Access-Token-for-User.html
+            var accessToken = eventArgs.TokenEndpointResponse.AccessToken;
+            eventArgs.Principal.AddIdentity(new ClaimsIdentity(
+                [
+                    new Claim("access_token", accessToken)
+                ]
+            ));
+
+            return Task.CompletedTask;
+        };
     });
 
 // ConfigureCookieOidcRefresh attaches a cookie OnValidatePrincipal callback to get
@@ -37,6 +51,10 @@ builder.Services.AddOptions<OpenIdConnectOptions>(MS_OIDC_SCHEME)
 builder.Services.ConfigureCookieOidcRefresh(CookieAuthenticationDefaults.AuthenticationScheme, MS_OIDC_SCHEME);
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpClient();
+
+//builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
 var app = builder.Build();
 

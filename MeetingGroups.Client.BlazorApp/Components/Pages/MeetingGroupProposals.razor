@@ -1,0 +1,78 @@
+﻿@page "/meeting-group-proposals"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Headers
+@attribute [StreamRendering]
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Meeting Group Proposals</PageTitle>
+
+<h1>Meeting Group Proposals</h1>
+
+<p>This component demonstrates showing data for Authorized users</p>
+
+@if (meetingGroupProposals == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+                <th>City</th>
+                <th>Country</th>
+                <th>Proposal Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var mgp in meetingGroupProposals)
+            {
+                <tr>
+                    <td>@mgp.Id</td>
+                    <td>@mgp.Name</td>
+                    <td>@mgp.LocationCity</td>
+                    <td>@mgp.LocationCountryCode</td>
+                    <td>@mgp.ProposalDate.Date.ToShortDateString()</td>
+                    <td>@mgp.StatusCode</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private MeetingGroupProposal[]? meetingGroupProposals;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // var token = await SessionStorage.GetItemAsync<string>("token");
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        if (authState.User.Identity.IsAuthenticated)
+        {
+            var accessToken = authState.User.Claims.Where(a => a.Type == "access_token").FirstOrDefault()?.Value;
+
+            var client = ClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            meetingGroupProposals = await client.GetFromJsonAsync<MeetingGroupProposal[]>("https://localhost:7022/meetings/MeetingGroupProposals");
+        }
+    }
+
+    private class MeetingGroupProposal
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public string LocationCity { get; set; }
+        public string LocationCountryCode { get; set; }
+        public Guid ProposalUserId { get; set; }
+        public DateTimeOffset ProposalDate { get; set; }
+        public string StatusCode { get; set; }
+    }
+}
