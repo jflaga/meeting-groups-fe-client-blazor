@@ -1,0 +1,93 @@
+﻿@page "/create-meeting-group"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Headers
+@using System.ComponentModel.DataAnnotations
+@attribute [StreamRendering]
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Create Meeting Group</PageTitle>
+
+<h1>Create Meeting Group</h1>
+
+
+@* <form method="post" @onsubmit="Submit" @formname="create-meeting-group-form">
+    <AntiforgeryToken />
+    <div class="form-group m-3">
+        <label for="name">Name: </label>
+        <InputText id="name" @bind-Value="@Model.Name"></InputText>
+    </div>
+    <div class="form-group m-3">
+        <label for="city">City: </label>
+        <InputText id="city" @bind-Value="@Model.LocationCity"></InputText>
+    </div>
+    <div class="form-group m-3">
+        <label for="country">Country Code: </label>
+        <InputText id="country" @bind-Value="@Model.LocationCountryCode"></InputText>
+    </div>
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</form> *@
+
+<EditForm Model="@Model" OnValidSubmit="@Submit" FormName="create-meeting-group-form">
+    <DataAnnotationsValidator />
+    @* <ValidationSummary /> *@
+    <div class="mb-3">
+        <label class="form-label" for="name">Name: </label>
+        <InputText id="name" class="form-control" @bind-Value="@Model.Name"></InputText>
+        <ValidationMessage For="@(() => Model.Name)" />
+    </div>
+    <div class="mb-3">  
+        <label class="form-label" for="city">City: </label>
+        <InputText id="city" class="form-control" @bind-Value="@Model.LocationCity"></InputText>
+        <ValidationMessage For="@(() => Model.LocationCity)" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="country">Country Code: </label>
+        <InputText id="country" class="form-control" @bind-Value="@Model.LocationCountryCode"></InputText>
+        <ValidationMessage For="@(() => Model.LocationCountryCode)" />
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    public CreateMeetingGroupDto Model { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Model ??= new();
+    }
+
+    private async void Submit()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        if (authState.User.Identity.IsAuthenticated)
+        {
+            var accessToken = authState.User.Claims.Where(a => a.Type == "access_token").FirstOrDefault()?.Value;
+
+            var client = ClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            await client.PostAsJsonAsync<CreateMeetingGroupDto>(
+                "https://localhost:7022/meetings/MeetingGroupProposals",
+                Model);
+        }
+    }
+
+    public class CreateMeetingGroupDto
+    {
+        [Required]
+        public string Name { get; set; }
+
+        [Required]
+        public string LocationCity { get; set; }
+
+        [Required]
+        [StringLength(2, ErrorMessage = "Country Code too long.")]
+        public string LocationCountryCode { get; set; }
+    }
+}
